@@ -16,7 +16,8 @@ make build
 make env
 ```
 
-Once you run this command, edit the file `api/.env` and enter the `OPENAI_API_KEY`.
+Once you run this command, edit the file `api/.env` and enter the `GOOGLE_API_KEY`.
+
 
 3. Start the services:
 ```bash

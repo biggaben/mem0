@@ -8,24 +8,42 @@ OpenMemory is your personal memory layer for LLMs - private, portable, and open-
 
 ### Prerequisites
 - Docker
-- OpenAI API Key
+- Google Gemini API Key
 
 You can quickly run OpenMemory by running the following command:
 
+**Linux/macOS:**
 ```bash
 curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | bash
 ```
 
-You should set the `OPENAI_API_KEY` as a global environment variable:
-
-```bash
-export OPENAI_API_KEY=your_api_key
+**Windows (PowerShell):**
+```powershell
+iwr -useb https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.ps1 | iex
 ```
 
-You can also set the `OPENAI_API_KEY` as a parameter to the script:
+You should set the `GOOGLE_API_KEY` as a global environment variable:
 
+**Linux/macOS:**
 ```bash
-curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | OPENAI_API_KEY=your_api_key bash
+export GOOGLE_API_KEY=your_api_key
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:GOOGLE_API_KEY="your_api_key"
+```
+
+You can also set the `GOOGLE_API_KEY` as a parameter to the script:
+
+**Linux/macOS:**
+```bash
+curl -sL https://raw.githubusercontent.com/biggaben/mem0/main/openmemory/run.sh | GOOGLE_API_KEY=your_api_key bash
+```
+
+**Windows (PowerShell):**
+```powershell
+$env:GOOGLE_API_KEY="your_api_key"; iwr -useb https://raw.githubusercontent.com/biggaben/mem0/main/openmemory/run.ps1 | iex
 ```
 
 ## Prerequisites
@@ -33,47 +51,54 @@ curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | 
 - Docker and Docker Compose
 - Python 3.9+ (for backend development)
 - Node.js (for frontend development)
-- OpenAI API Key (required for LLM interactions, run `cp api/.env.example api/.env` then change **OPENAI_API_KEY** to yours)
+- Google Gemini API Key
 
 ## Quickstart
 
 ### 1. Set Up Environment Variables
 
-Before running the project, you need to configure environment variables for both the API and the UI.
+Before running the project, you need to configure environment variables.
 
-You can do this in one of the following ways:
+#### Option A: Using `run.sh` (Quickest)
 
-- **Manually**:  
-  Create a `.env` file in each of the following directories:
-  - `/api/.env`
-  - `/ui/.env`
+You can run the project directly with environment variables.
 
-- **Using `.env.example` files**:  
-  Copy and rename the example files:
+**For Linux/macOS:**
 
-  ```bash
-  cp api/.env.example api/.env
-  cp ui/.env.example ui/.env
-  ```
 
- - **Using Makefile** (if supported):  
-    Run:
-  
-   ```bash
-   make env
-   ```
-- #### Example `/api/.env`
+```bash
+# For Google Gemini
+export GOOGLE_API_KEY=your_api_key
+export LLM_PROVIDER=gemini
+./run.sh
+```
+
+**For Windows (PowerShell):**
+```powershell
+$env:GOOGLE_API_KEY="your_api_key"
+$env:LLM_PROVIDER="gemini"
+.\run.ps1
+```
+
+#### Option B: Manual Docker Compose
+
+Create a `.env` file in `api/`:
 
 ```env
-OPENAI_API_KEY=sk-xxx
-USER=<user-id> # The User Id you want to associate the memories with 
+# api/.env
+LLM_PROVIDER=gemini
+GOOGLE_API_KEY=your_gemini_key
+USER=default_user
 ```
-- #### Example `/ui/.env`
 
-```env
-NEXT_PUBLIC_API_URL=http://localhost:8765
-NEXT_PUBLIC_USER_ID=<user-id> # Same as the user id for environment variable in api
+Then run:
+```bash
+make build
+make up
 ```
+
+#### UI Configuration
+The UI connects to the backend at `http://localhost:8765`. If you need to change this, check `ui/.env.example`.
 
 ### 2. Build and Run the Project
 You can run the project using the following two commands:
@@ -104,7 +129,45 @@ Use the following one step command to configure OpenMemory Local MCP to a client
 npx @openmemory/install local http://localhost:8765/mcp/<client-name>/sse/<user-id> --client <client-name>
 ```
 
+Example:
+```bash
+npx @openmemory/install local http://localhost:8765/mcp/antigravity/sse/default_user --client antigravity
+```
+
 Replace `<client-name>` with the desired client name and `<user-id>` with the value specified in your environment variables.
+
+### Local MCP via Stdio (Claude Desktop)
+
+To use OpenMemory with Claude Desktop or other Stdio MCP clients:
+
+1.  Ensure you have `uv` installed.
+2.  Add the configuration to your MCP client config (e.g. `claude_desktop_config.json`):
+
+```json
+{
+  "mcpServers": {
+    "openmemory": {
+      "command": "uv",
+      "args": [
+        "run",
+        "api/run_mcp.py"
+      ],
+      "cwd": "/absolute/path/to/openmemory",
+      "env": {
+        "GOOGLE_API_KEY": "AIza...",
+        "LLM_PROVIDER": "gemini",
+        "EMBEDDER_PROVIDER": "gemini",
+        "USER_ID": "default_user",
+        "MCP_CLIENT_NAME": "default_client"
+      }
+    }
+  }
+}
+```
+
+> [!NOTE]
+> The database services (Postgres, Qdrant) must be running (e.g., via `docker-compose up mem0_store`).
+
 
 
 ## Project Structure

@@ -51,16 +51,33 @@ def get_memory_client_safe():
 user_id_var: contextvars.ContextVar[str] = contextvars.ContextVar("user_id")
 client_name_var: contextvars.ContextVar[str] = contextvars.ContextVar("client_name")
 
+# Global context for Stdio/local usage
+_runtime_context = {
+    "user_id": None,
+    "client_name": None
+}
+
+def get_current_context():
+    """
+    Get the current user_id and client_name from:
+    1. Context variables (SSE request scope)
+    2. Runtime context (Stdio session scope)
+    3. Environment variables (process scope)
+    """
+    uid = user_id_var.get(None) or _runtime_context.get("user_id") or os.environ.get("USER_ID") or os.environ.get("USER")
+    client_name = client_name_var.get(None) or _runtime_context.get("client_name") or os.environ.get("MCP_CLIENT_NAME") or "default_client"
+    return uid, client_name
+
+
 # Create a router for MCP endpoints
 mcp_router = APIRouter(prefix="/mcp")
 
 # Initialize SSE transport
 sse = SseServerTransport("/mcp/messages/")
 
-@mcp.tool(description="Add a new memory. This method is called everytime the user informs anything about themselves, their preferences, or anything that has any relevant information which can be useful in the future conversation. This can also be called when the user asks you to remember something.")
+@mcp.tool(description="Add a new memory. Call this to store important facts, user preferences, or specific instructions from the user for future reference. Do NOT call this for general chit-chat.")
 async def add_memories(text: str) -> str:
-    uid = user_id_var.get(None)
-    client_name = client_name_var.get(None)
+    uid, client_name = get_current_context()
 
     if not uid:
         return "Error: user_id not provided"
@@ -141,10 +158,9 @@ async def add_memories(text: str) -> str:
         return f"Error adding to memory: {e}"
 
 
-@mcp.tool(description="Search through stored memories. This method is called EVERYTIME the user asks anything.")
+@mcp.tool(description="Search stored memories. YOU MUST use this tool *before* answering questions to ensure your response is grounded in the user's personal context and history.")
 async def search_memory(query: str) -> str:
-    uid = user_id_var.get(None)
-    client_name = client_name_var.get(None)
+    uid, client_name = get_current_context()
     if not uid:
         return "Error: user_id not provided"
     if not client_name:
@@ -219,10 +235,9 @@ async def search_memory(query: str) -> str:
         return f"Error searching memory: {e}"
 
 
-@mcp.tool(description="List all memories in the user's memory")
+@mcp.tool(description="List ALL memories. Use this sparingly as it may return a large amount of data. Prefer search_memory for specific queries.")
 async def list_memories() -> str:
-    uid = user_id_var.get(None)
-    client_name = client_name_var.get(None)
+    uid, client_name = get_current_context()
     if not uid:
         return "Error: user_id not provided"
     if not client_name:
@@ -288,10 +303,9 @@ async def list_memories() -> str:
         return f"Error getting memories: {e}"
 
 
-@mcp.tool(description="Delete specific memories by their IDs")
+@mcp.tool(description="Delete specific memories by their IDs. Use after searching or listing if the user requests it.")
 async def delete_memories(memory_ids: list[str]) -> str:
-    uid = user_id_var.get(None)
-    client_name = client_name_var.get(None)
+    uid, client_name = get_current_context()
     if not uid:
         return "Error: user_id not provided"
     if not client_name:
@@ -362,10 +376,9 @@ async def delete_memories(memory_ids: list[str]) -> str:
         return f"Error deleting memories: {e}"
 
 
-@mcp.tool(description="Delete all memories in the user's memory")
+@mcp.tool(description="Delete ALL memories. WARNING: This action is irreversible. Explicit user confirmation is required.")
 async def delete_all_memories() -> str:
-    uid = user_id_var.get(None)
-    client_name = client_name_var.get(None)
+    uid, client_name = get_current_context()
     if not uid:
         return "Error: user_id not provided"
     if not client_name:
@@ -425,6 +438,15 @@ async def delete_all_memories() -> str:
     except Exception as e:
         logging.exception(f"Error deleting memories: {e}")
         return f"Error deleting memories: {e}"
+
+
+@mcp.tool(description="Set the active user_id and client_name for the current session. Use this if you need to switch contexts or were not initialized with the correct user.")
+async def set_user_context(user_id: str, client_name: str) -> str:
+    """Set the user_id and client_name for the current session context."""
+    global _runtime_context
+    _runtime_context["user_id"] = user_id
+    _runtime_context["client_name"] = client_name
+    return f"Context updated. Active user: {user_id}, Client: {client_name}"
 
 
 @mcp_router.get("/{client_name}/sse/{user_id}")

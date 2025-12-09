@@ -24,7 +24,7 @@ We welcome all forms of contributions:
 ### Backend Setup
 
 ```bash
-# Copy environment file and edit file to update OPENAI_API_KEY and other secrets
+# Copy environment file and edit file to update GOOGLE_API_KEY and other secrets
 make env
 
 # Build the containers
@@ -47,7 +47,7 @@ make ui-dev
 - Docker and Docker Compose
 - Python 3.9+ (for backend development)
 - Node.js (for frontend development)
-- OpenAI API Key (for LLM interactions)
+- Google Gemini API Key (for LLM interactions)
 
 ### Getting Started
 Follow the setup instructions in the README.md file to set up your development environment.

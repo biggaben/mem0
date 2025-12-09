@@ -5,13 +5,17 @@ set -e
 echo "🚀 Starting OpenMemory installation..."
 
 # Set environment variables
-OPENAI_API_KEY="${OPENAI_API_KEY:-}"
+# OPENAI_API_KEY is no longer required by default
+
+GOOGLE_API_KEY="${GOOGLE_API_KEY:-}"
 USER="${USER:-$(whoami)}"
 NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-http://localhost:8765}"
+LLM_PROVIDER="${LLM_PROVIDER:-gemini}"
 
-if [ -z "$OPENAI_API_KEY" ]; then
-  echo "❌ OPENAI_API_KEY not set. Please run with: curl -sL https://raw.githubusercontent.com/mem0ai/mem0/main/openmemory/run.sh | OPENAI_API_KEY=your_api_key bash"
-  echo "❌ OPENAI_API_KEY not set. You can also set it as global environment variable: export OPENAI_API_KEY=your_api_key"
+if [ -z "$GOOGLE_API_KEY" ]; then
+  echo "❌ GOOGLE_API_KEY is not set."
+  echo "Please set it as an environment variable."
+  echo "Example: export GOOGLE_API_KEY=your_api_key_here"
   exit 1
 fi
 
@@ -48,7 +52,8 @@ if [ -z "$FRONTEND_PORT" ]; then
 fi
 
 # Export required variables for Compose and frontend
-export OPENAI_API_KEY
+# export OPENAI_API_KEY
+
 export USER
 export NEXT_PUBLIC_API_URL
 export NEXT_PUBLIC_USER_ID="$USER"
@@ -105,9 +110,11 @@ create_compose_file() {
   # Add the openmemory-mcp service
   cat >> docker-compose.yml <<EOF
   openmemory-mcp:
-    image: mem0/openmemory-mcp:latest
+    image: openmemory-mcp-local
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_API_KEY=""
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - LLM_PROVIDER=${LLM_PROVIDER}
       - USER=${USER}
 EOF
 
@@ -180,7 +187,7 @@ EOF
     ports:
       - "8765:8765"
     volumes:
-      - openmemory_db:/usr/src/openmemory
+      - openmemory_db:/usr/src/openmemory/data
       - ${volume_name}:/tmp/faiss
 
 volumes:
@@ -194,7 +201,7 @@ EOF
     ports:
       - "8765:8765"
     volumes:
-      - openmemory_db:/usr/src/openmemory
+      - openmemory_db:/usr/src/openmemory/data
 
 volumes:
   ${volume_name}:
@@ -251,6 +258,9 @@ install_vector_store_packages() {
 }
 
 # Start services
+echo "🏗️ Building backend image (openmemory-mcp-local)..."
+docker build --no-cache -t openmemory-mcp-local ./api
+
 echo "🚀 Starting backend services..."
 docker compose up -d
 
@@ -374,13 +384,17 @@ elif [ "$VECTOR_STORE" = "faiss" ]; then
 fi
 
 # Start the frontend
+echo "🏗️ Building frontend image (openmemory-ui-local)..."
+docker build -t openmemory-ui-local ./ui
+
 echo "🚀 Starting frontend on port $FRONTEND_PORT..."
 docker run -d \
-  --name mem0_ui \
-  -p ${FRONTEND_PORT}:3000 \
-  -e NEXT_PUBLIC_API_URL="$NEXT_PUBLIC_API_URL" \
-  -e NEXT_PUBLIC_USER_ID="$USER" \
-  mem0/openmemory-ui:latest
+    --name mem0_ui \
+    -p "${FRONTEND_PORT}:3000" \
+    -e NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL}" \
+    -e NEXT_PUBLIC_USER_ID="${USER}" \
+    openmemory-ui-local
+
 
 echo "✅ Backend:  http://localhost:8765"
 echo "✅ Frontend: http://localhost:$FRONTEND_PORT"

@@ -103,9 +103,10 @@ export function FormView({ settings, onChange }: FormViewProps) {
   const isEmbedderOllama = settings.mem0?.embedder?.provider?.toLowerCase() === "ollama"
 
   const LLM_PROVIDERS = {
-    "OpenAI": "openai",
-    "Anthropic": "anthropic", 
-    "Azure OpenAI": "azure_openai",
+    "Google Gemini": "gemini",
+    // "OpenAI": "openai",
+    // "Anthropic": "anthropic", 
+    // "Azure OpenAI": "azure_openai",
     "Ollama": "ollama",
     "Together": "together",
     "Groq": "groq",
@@ -113,7 +114,7 @@ export function FormView({ settings, onChange }: FormViewProps) {
     "Mistral AI": "mistralai",
     "Google AI": "google_ai",
     "AWS Bedrock": "aws_bedrock",
-    "Gemini": "gemini",
+
     "DeepSeek": "deepseek",
     "xAI": "xai",
     "LM Studio": "lmstudio",
@@ -121,12 +122,13 @@ export function FormView({ settings, onChange }: FormViewProps) {
   }
 
   const EMBEDDER_PROVIDERS = {
-    "OpenAI": "openai",
-    "Azure OpenAI": "azure_openai", 
+    "Google Gemini": "gemini",
+    // "OpenAI": "openai",
+    // "Azure OpenAI": "azure_openai", 
     "Ollama": "ollama",
     "Hugging Face": "huggingface",
     "Vertex AI": "vertexai",
-    "Gemini": "gemini",
+
     "LM Studio": "lmstudio",
     "Together": "together",
     "LangChain": "langchain",

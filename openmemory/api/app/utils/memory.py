@@ -193,7 +193,7 @@ def get_default_memory_config():
             "url": milvus_url,
             "token": os.environ.get('MILVUS_TOKEN', ''),  # Always include, empty string for local setup
             "db_name": os.environ.get('MILVUS_DB_NAME', ''),
-            "embedding_model_dims": 1536,
+            "embedding_model_dims": int(os.environ.get('EMBEDDING_DIMS', 1536)),
             "metric_type": "COSINE"  # Using COSINE for better semantic similarity
         }
     elif os.environ.get('ELASTICSEARCH_HOST') and os.environ.get('ELASTICSEARCH_PORT'):
@@ -211,7 +211,7 @@ def get_default_memory_config():
             "password": os.environ.get('ELASTICSEARCH_PASSWORD', 'changeme'),
             "verify_certs": False,
             "use_ssl": False,
-            "embedding_model_dims": 1536
+            "embedding_model_dims": int(os.environ.get('EMBEDDING_DIMS', 1536))
         })
     elif os.environ.get('OPENSEARCH_HOST') and os.environ.get('OPENSEARCH_PORT'):
         vector_store_provider = "opensearch"
@@ -224,7 +224,7 @@ def get_default_memory_config():
         vector_store_config = {
             "collection_name": "openmemory",
             "path": os.environ.get('FAISS_PATH'),
-            "embedding_model_dims": 1536,
+            "embedding_model_dims": int(os.environ.get('EMBEDDING_DIMS', 1536)),
             "distance_strategy": "cosine"
         }
     else:
@@ -236,27 +236,66 @@ def get_default_memory_config():
     
     print(f"Auto-detected vector store: {vector_store_provider} with config: {vector_store_config}")
     
+    # Determine LLM configuration
+    llm_provider = os.getenv("LLM_PROVIDER", "gemini")
+    print(f"Using LLM provider: {llm_provider}")
+    
+    if llm_provider == "gemini":
+        llm_config = {
+            "provider": "gemini",
+            "config": {
+                "model": os.getenv("LLM_MODEL", "gemini-3-pro-preview"),
+                "api_key": "env:GOOGLE_API_KEY",
+                "temperature": 0.1,
+                "max_tokens": 2000,
+            }
+        }
+    else:
+        # Default to Gemini
+        llm_config = {
+            "provider": "gemini",
+            "config": {
+                "model": os.getenv("LLM_MODEL", "gemini-3-pro-preview"),
+
+                "temperature": 0.1,
+                "max_tokens": 2000,
+                "api_key": "env:GOOGLE_API_KEY"
+            }
+        }
+    
+    # Determine Embedder configuration
+    embedder_provider = os.getenv("EMBEDDER_PROVIDER", "gemini")
+    print(f"Using Embedder provider: {embedder_provider}")
+    
+    if embedder_provider == "gemini":
+        embedder_config = {
+            "provider": "gemini",
+            "config": {
+                "model": os.getenv("EMBEDDER_MODEL", "models/gemini-embedding-001"),
+
+                "api_key": "env:GOOGLE_API_KEY",
+                "embedding_dims": int(os.environ.get('EMBEDDING_DIMS', 768))
+            }
+        }
+    else:
+        # Default to Gemini
+        embedder_config = {
+            "provider": "gemini",
+            "config": {
+                "model": os.getenv("EMBEDDER_MODEL", "models/gemini-embedding-001"),
+
+                "api_key": "env:GOOGLE_API_KEY",
+                "embedding_dims": int(os.environ.get('EMBEDDING_DIMS', 768))
+            }
+        }
+        
     return {
         "vector_store": {
             "provider": vector_store_provider,
             "config": vector_store_config
         },
-        "llm": {
-            "provider": "openai",
-            "config": {
-                "model": "gpt-4o-mini",
-                "temperature": 0.1,
-                "max_tokens": 2000,
-                "api_key": "env:OPENAI_API_KEY"
-            }
-        },
-        "embedder": {
-            "provider": "openai",
-            "config": {
-                "model": "text-embedding-3-small",
-                "api_key": "env:OPENAI_API_KEY"
-            }
-        },
+        "llm": llm_config,
+        "embedder": embedder_config,
         "version": "v1.1"
     }
 
@@ -359,6 +398,7 @@ def get_memory_client(custom_instructions: str = None):
 
         # ALWAYS parse environment variables in the final config
         # This ensures that even default config values like "env:OPENAI_API_KEY" get parsed
+        # AND check if configured provider's api_key is missing
         print("Parsing environment variables in final config...")
         config = _parse_environment_variables(config)
 
@@ -375,6 +415,7 @@ def get_memory_client(custom_instructions: str = None):
             except Exception as init_error:
                 print(f"Warning: Failed to initialize memory client: {init_error}")
                 print("Server will continue running with limited memory functionality")
+                print("Debug: Config was:", json.dumps(config, indent=2))
                 _memory_client = None
                 _config_hash = None
                 return None

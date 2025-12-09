@@ -54,19 +54,21 @@ def get_default_configuration():
         },
         "mem0": {
             "llm": {
-                "provider": "openai",
+                "provider": "gemini",
                 "config": {
-                    "model": "gpt-4o-mini",
+                    "model": "gemini-3-pro-preview",
+
                     "temperature": 0.1,
                     "max_tokens": 2000,
-                    "api_key": "env:OPENAI_API_KEY"
+                    "api_key": "env:GOOGLE_API_KEY"
                 }
             },
             "embedder": {
-                "provider": "openai",
+                "provider": "gemini",
                 "config": {
-                    "model": "text-embedding-3-small",
-                    "api_key": "env:OPENAI_API_KEY"
+                    "model": "models/gemini-embedding-001",
+
+                    "api_key": "env:GOOGLE_API_KEY"
                 }
             },
             "vector_store": None
